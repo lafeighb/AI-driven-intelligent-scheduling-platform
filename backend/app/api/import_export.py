@@ -13,7 +13,7 @@ from app.models.teacher import Teacher
 from app.models.course import Course
 from app.models.classroom import Classroom
 from app.models.schedule import ScheduleEntry
-from app.utils.csv_parser import parse_csv_content, generate_csv_template
+from app.utils.csv_parser import parse_csv_content, generate_csv_template, parse_syllabus_csv
 from app.services.validation import ValidationService
 from app.services.export_service import ExportService
 from app.services.conflict import ConflictDetector
@@ -48,6 +48,13 @@ async def import_csv(entity_type: str, file: UploadFile = File(...), db: Session
     except UnicodeDecodeError:
         text_content = content.decode('gbk')
 
+    # 课程大纲使用动态列解析器
+    if entity_type == "syllabus":
+        data_rows, parse_errors = parse_syllabus_csv(text_content)
+        if parse_errors and not data_rows:
+            return {"success": False, "errors": parse_errors, "imported": 0}
+        return _import_syllabus(data_rows, db)
+
     data_rows, parse_errors = parse_csv_content(text_content, entity_type)
 
     if parse_errors and not data_rows:
@@ -65,10 +72,6 @@ async def import_csv(entity_type: str, file: UploadFile = File(...), db: Session
             "warnings": [w["message"] for w in validation_result["warnings"]],
             "summary": validation_result["summary"],
         }
-
-    # 课程大纲导入 — 一体化创建班级和课程，自动匹配 department
-    if entity_type == "syllabus":
-        return _import_syllabus(data_rows, db)
 
     # 批量存入数据库
     model_map = {
