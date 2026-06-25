@@ -13,6 +13,7 @@ export default function CoursesPage() {
         { title: 'ID', dataIndex: 'id', width: 60 },
         { title: '课程名称', dataIndex: 'name', width: 160 },
         { title: '课程编码', dataIndex: 'course_code', width: 100 },
+        { title: '所属专业', dataIndex: 'department', width: 100, render: (v: string) => v || <span style={{color:'#ccc'}}>未设置</span> },
         { title: '类型', dataIndex: 'course_type', width: 80 },
         { title: '周课时', dataIndex: 'weekly_hours', width: 70 },
         { title: '学分', dataIndex: 'credits', width: 60 },
@@ -46,8 +47,8 @@ export default function CoursesPage() {
           <Form.Item name="priority" label="优先级(0-10)">
             <InputNumber min={0} max={10} style={{ width: '100%' }} />
           </Form.Item>
-          <Form.Item name="department" label="开课部门">
-            <Input placeholder="开课部门" />
+          <Form.Item name="department" label="所属专业" help="与班级的「所属专业」一致时，该课程优先分配给对应班级">
+            <Input placeholder="如: 人工智能/理科/文科（留空则为通用课）" />
           </Form.Item>
           <Form.Item name="remarks" label="备注">
             <Input.TextArea rows={2} />
