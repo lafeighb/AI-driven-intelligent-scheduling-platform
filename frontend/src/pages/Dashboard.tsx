@@ -3,11 +3,11 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Row, Col, Card, Statistic, Typography, List, Tag, Spin,
-  Select, Progress, Empty, Space,
+  Select, Progress, Empty, Space, Popconfirm, message, Button,
 } from 'antd';
 import {
   TeamOutlined, BookOutlined, BankOutlined, ScheduleOutlined,
-  ExperimentOutlined,
+  ExperimentOutlined, DeleteOutlined,
 } from '@ant-design/icons';
 import { classApi, teacherApi, courseApi, classroomApi, scheduleApi, ioApi } from '../api/client';
 import type { VersionInfo, AnalysisReport } from '../types';
@@ -26,6 +26,17 @@ export default function Dashboard() {
   const [reportLoading, setReportLoading] = useState(false);
 
   // 加载基础统计和版本列表
+  const loadVersions = async () => {
+    try {
+      const verRes = await scheduleApi.getVersions();
+      const verList = (verRes as VersionInfo[]) || [];
+      setVersions(verList);
+      return verList;
+    } catch {
+      return [];
+    }
+  };
+
   useEffect(() => {
     async function loadData() {
       try {
@@ -70,6 +81,25 @@ export default function Dashboard() {
       .catch(() => setReport(null))
       .finally(() => setReportLoading(false));
   }, [selectedVersion]);
+
+  // 删除排课版本
+  const handleDeleteVersion = async (version: string) => {
+    try {
+      await scheduleApi.deleteVersion(version);
+      message.success('排课方案已删除');
+      const verList = await loadVersions();
+      if (selectedVersion === version) {
+        if (verList.length > 0) {
+          setSelectedVersion(verList[0].version);
+        } else {
+          setSelectedVersion(undefined);
+          setReport(null);
+        }
+      }
+    } catch (err: any) {
+      message.error(`删除失败: ${err.message}`);
+    }
+  };
 
   return (
     <Spin spinning={loading}>
@@ -171,10 +201,30 @@ export default function Dashboard() {
                             </Tag>
                           )}
                         </div>
-                        <Text type="secondary" style={{ fontSize: 11, cursor: 'pointer' }}
-                          onClick={(e) => { e.stopPropagation(); navigate(`/timetable?version=${v.version}`); }}>
-                          查看课表 →
-                        </Text>
+                        <Space size={4}>
+                          <Text type="secondary" style={{ fontSize: 11, cursor: 'pointer' }}
+                            onClick={(e) => { e.stopPropagation(); navigate(`/timetable?version=${v.version}`); }}>
+                            查看课表 →
+                          </Text>
+                          <Popconfirm
+                            title="确认删除此排课方案？"
+                            description="删除后相关排课条目将被永久移除"
+                            onConfirm={() => handleDeleteVersion(v.version)}
+                            onCancel={(e) => e?.stopPropagation()}
+                            okText="确认删除"
+                            cancelText="取消"
+                            okButtonProps={{ danger: true }}
+                          >
+                            <Button
+                              type="text"
+                              size="small"
+                              danger
+                              icon={<DeleteOutlined />}
+                              onClick={(e) => e.stopPropagation()}
+                              style={{ marginLeft: 4 }}
+                            />
+                          </Popconfirm>
+                        </Space>
                       </List.Item>
                     );
                   }}

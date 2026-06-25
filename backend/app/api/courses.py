@@ -5,6 +5,7 @@ from typing import List
 
 from app.database import get_db
 from app.models.course import Course
+from app.models.schedule import ScheduleEntry
 from app.schemas.course import CourseCreate, CourseUpdate, CourseResponse
 
 router = APIRouter(prefix="/api/courses", tags=["课程管理"])
@@ -62,10 +63,20 @@ def update_course(course_id: int, data: CourseUpdate, db: Session = Depends(get_
     return course
 
 
-@router.delete("/{course_id}", status_code=204, summary="删除课程")
+@router.delete("/{course_id}", summary="删除课程")
 def delete_course(course_id: int, db: Session = Depends(get_db)):
+    """删除课程（如有排课引用则阻止删除并提示）"""
     course = db.query(Course).filter(Course.id == course_id).first()
     if not course:
         raise HTTPException(status_code=404, detail="课程不存在")
+
+    ref_count = db.query(ScheduleEntry).filter(ScheduleEntry.course_id == course_id).count()
+    if ref_count > 0:
+        raise HTTPException(
+            status_code=409,
+            detail=f"无法删除课程「{course.name}」：该课程有 {ref_count} 条排课记录引用，请先删除相关排课方案后再操作"
+        )
+
     db.delete(course)
     db.commit()
+    return {"ok": True, "message": f"课程「{course.name}」已删除"}

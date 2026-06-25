@@ -47,7 +47,11 @@ apiClient.interceptors.response.use(
           // 无法解析则使用默认错误消息
         }
       } else if (typeof respData === 'object' && respData.detail) {
+        // FastAPI JSON 错误响应 {"detail": "..."}
         message = respData.detail;
+      } else if (typeof respData === 'string' && respData.length > 0 && respData.length < 200) {
+        // 纯文本错误响应（如 "Internal Server Error"）
+        message = respData;
       }
     }
 

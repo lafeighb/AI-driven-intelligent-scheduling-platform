@@ -5,6 +5,7 @@ from typing import List
 
 from app.database import get_db
 from app.models.teacher import Teacher
+from app.models.schedule import ScheduleEntry
 from app.schemas.teacher import TeacherCreate, TeacherUpdate, TeacherResponse
 
 router = APIRouter(prefix="/api/teachers", tags=["教师管理"])
@@ -64,10 +65,20 @@ def update_teacher(teacher_id: int, data: TeacherUpdate, db: Session = Depends(g
     return teacher
 
 
-@router.delete("/{teacher_id}", status_code=204, summary="删除教师")
+@router.delete("/{teacher_id}", summary="删除教师")
 def delete_teacher(teacher_id: int, db: Session = Depends(get_db)):
+    """删除教师（如有排课引用则阻止删除并提示）"""
     teacher = db.query(Teacher).filter(Teacher.id == teacher_id).first()
     if not teacher:
         raise HTTPException(status_code=404, detail="教师不存在")
+
+    ref_count = db.query(ScheduleEntry).filter(ScheduleEntry.teacher_id == teacher_id).count()
+    if ref_count > 0:
+        raise HTTPException(
+            status_code=409,
+            detail=f"无法删除教师「{teacher.name}」：该教师有 {ref_count} 条排课记录引用，请先删除相关排课方案后再操作"
+        )
+
     db.delete(teacher)
     db.commit()
+    return {"ok": True, "message": f"教师「{teacher.name}」已删除"}

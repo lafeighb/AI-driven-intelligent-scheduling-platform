@@ -1,7 +1,9 @@
 """AI驱动一体化智能排课平台 - FastAPI主入口"""
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
+from sqlalchemy.exc import IntegrityError
 
 from app.config import settings
 from app.database import init_db, engine, Base
@@ -33,6 +35,14 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+# 全局异常处理 — 将 IntegrityError 转为友好的 JSON 错误响应
+@app.exception_handler(IntegrityError)
+async def integrity_error_handler(request: Request, exc: IntegrityError):
+    detail = "数据操作冲突：可能存在关联数据，请先删除关联的排课记录后再操作"
+    return JSONResponse(status_code=409, content={"detail": detail})
+
 
 # 注册路由
 app.include_router(classes.router)

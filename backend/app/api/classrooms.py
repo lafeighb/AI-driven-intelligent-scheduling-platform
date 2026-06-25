@@ -5,6 +5,7 @@ from typing import List
 
 from app.database import get_db
 from app.models.classroom import Classroom
+from app.models.schedule import ScheduleEntry
 from app.schemas.classroom import ClassroomCreate, ClassroomUpdate, ClassroomResponse
 
 router = APIRouter(prefix="/api/classrooms", tags=["教室管理"])
@@ -64,10 +65,20 @@ def update_classroom(classroom_id: int, data: ClassroomUpdate, db: Session = Dep
     return room
 
 
-@router.delete("/{classroom_id}", status_code=204, summary="删除教室")
+@router.delete("/{classroom_id}", summary="删除教室")
 def delete_classroom(classroom_id: int, db: Session = Depends(get_db)):
+    """删除教室（如有排课引用则阻止删除并提示）"""
     room = db.query(Classroom).filter(Classroom.id == classroom_id).first()
     if not room:
         raise HTTPException(status_code=404, detail="教室不存在")
+
+    ref_count = db.query(ScheduleEntry).filter(ScheduleEntry.classroom_id == classroom_id).count()
+    if ref_count > 0:
+        raise HTTPException(
+            status_code=409,
+            detail=f"无法删除教室「{room.name}」：该教室有 {ref_count} 条排课记录引用，请先删除相关排课方案后再操作"
+        )
+
     db.delete(room)
     db.commit()
+    return {"ok": True, "message": f"教室「{room.name}」已删除"}

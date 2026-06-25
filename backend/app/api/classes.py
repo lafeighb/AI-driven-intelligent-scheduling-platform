@@ -5,6 +5,7 @@ from typing import List
 
 from app.database import get_db
 from app.models.class_info import ClassInfo
+from app.models.schedule import ScheduleEntry
 from app.schemas.class_info import ClassInfoCreate, ClassInfoUpdate, ClassInfoResponse
 
 router = APIRouter(prefix="/api/classes", tags=["班级管理"])
@@ -63,11 +64,21 @@ def update_class(class_id: int, data: ClassInfoUpdate, db: Session = Depends(get
     return cls
 
 
-@router.delete("/{class_id}", status_code=204, summary="删除班级")
+@router.delete("/{class_id}", summary="删除班级")
 def delete_class(class_id: int, db: Session = Depends(get_db)):
-    """删除班级"""
+    """删除班级（如有排课引用则阻止删除并提示）"""
     cls = db.query(ClassInfo).filter(ClassInfo.id == class_id).first()
     if not cls:
         raise HTTPException(status_code=404, detail="班级不存在")
+
+    # 检查是否被排课条目引用
+    ref_count = db.query(ScheduleEntry).filter(ScheduleEntry.class_id == class_id).count()
+    if ref_count > 0:
+        raise HTTPException(
+            status_code=409,
+            detail=f"无法删除班级「{cls.name}」：该班级有 {ref_count} 条排课记录引用，请先删除相关排课方案后再操作"
+        )
+
     db.delete(cls)
     db.commit()
+    return {"ok": True, "message": f"班级「{cls.name}」已删除"}

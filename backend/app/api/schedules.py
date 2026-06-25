@@ -246,13 +246,15 @@ def update_schedule_entry(entry_id: int, data: ScheduleEntryUpdate, db: Session 
     return _enrich_entry(entry, db)
 
 
-@router.delete("/{entry_id}", status_code=204, summary="删除排课条目")
+@router.delete("/{entry_id}", summary="删除排课条目")
 def delete_schedule_entry(entry_id: int, db: Session = Depends(get_db)):
+    """删除单个排课条目"""
     entry = db.query(ScheduleEntry).filter(ScheduleEntry.id == entry_id).first()
     if not entry:
         raise HTTPException(status_code=404, detail="排课条目不存在")
     db.delete(entry)
     db.commit()
+    return {"ok": True, "message": "排课条目已删除"}
 
 
 @router.delete("/version/{version}", summary="删除整个版本的排课方案")
