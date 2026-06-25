@@ -1,0 +1,126 @@
+/* 全局样式 - Stripe 设计系统 */
+/* 参考: DESIGN.md - Stripe-Inspired Design Analysis */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  height: 100%;
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "SF Pro Display",
+    "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background: #f6f9fc;
+  color: #0d253d;
+}
+
+/* Ant Design 菜单覆盖 - Stripe Navy 侧边栏 */
+.ant-menu-dark {
+  background: #0d253d !important;
+}
+
+.ant-menu-dark .ant-menu-item-selected {
+  background: #533afd !important;
+}
+
+.ant-menu-dark .ant-menu-sub {
+  background: rgba(0, 0, 0, 0.15) !important;
+}
+
+/* 卡片边框 */
+.ant-card-bordered {
+  border-color: #e3e8ee !important;
+}
+
+/* 按钮风格 */
+.ant-btn-primary {
+  box-shadow: 0 1px 3px rgba(83, 58, 253, 0.3);
+}
+
+.ant-btn-primary:hover {
+  box-shadow: 0 2px 6px rgba(83, 58, 253, 0.4);
+}
+
+/* 表格 */
+.ant-table {
+  border-radius: 8px;
+}
+
+.ant-table-thead > tr > th {
+  background: #f6f9fc !important;
+  color: #0d253d !important;
+  font-weight: 600 !important;
+  font-size: 13px !important;
+}
+
+/* 输入框 */
+.ant-input,
+.ant-picker,
+.ant-select-selector {
+  border-color: #e3e8ee !important;
+}
+
+.ant-input:hover,
+.ant-picker:hover,
+.ant-select-selector:hover {
+  border-color: #533afd !important;
+}
+
+.ant-input:focus,
+.ant-picker-focused,
+.ant-select-focused .ant-select-selector {
+  border-color: #533afd !important;
+  box-shadow: 0 0 0 2px rgba(83, 58, 253, 0.15) !important;
+}
+
+/* 进度条 */
+.ant-progress-text {
+  color: #0d253d !important;
+  font-weight: 600 !important;
+}
+
+/* 统计组件 */
+.ant-statistic-title {
+  color: #64748d !important;
+  font-size: 13px !important;
+}
+
+/* 滚动条 */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #d0d6e0;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #a0a8b0;
+}
+
+/* 标签风格 */
+.ant-tag {
+  border-radius: 9999px;
+}
+
+/* 弹窗 */
+.ant-modal-content {
+  border-radius: 10px;
+}
+
+/* 描述列表 */
+.ant-descriptions-bordered .ant-descriptions-item-label {
+  background: #f6f9fc;
+  color: #64748d;
+}
