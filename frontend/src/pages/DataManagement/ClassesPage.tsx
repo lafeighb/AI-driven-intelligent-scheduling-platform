@@ -24,7 +24,7 @@ export default function ClassesPage() {
             <Input placeholder="如: 高一(1)班" />
           </Form.Item>
           <Form.Item name="grade" label="年级" rules={[{ required: true }]}>
-            <Select options={['高一','高二','高三','大一','大二','大三','大四'].map(g => ({ label: g, value: g }))} />
+            <Select options={['大一','大二','大三','大四'].map(g => ({ label: g, value: g }))} />
           </Form.Item>
           <Form.Item name="student_count" label="学生人数">
             <InputNumber min={1} max={200} style={{ width: '100%' }} />
