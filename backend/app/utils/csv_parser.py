@@ -46,7 +46,7 @@ CSV_TEMPLATES = {
             "requires_consecutive": "需连排",
             "requires_lab": "需实验室",
             "priority": "优先级",
-            "department": "开课部门",
+            "department": "所属专业",
             "remarks": "备注",
         }
     },
@@ -62,6 +62,27 @@ CSV_TEMPLATES = {
             "room_type": "教室类型",
             "has_multimedia": "多媒体",
             "remarks": "备注",
+        }
+    },
+    # 课程大纲模板 — 一体化定义班级+课程+课时对照关系
+    "syllabus": {
+        "required_fields": ["class_name", "class_grade", "course_name", "course_code", "weekly_hours"],
+        "optional_fields": ["student_count", "department", "total_hours", "credits",
+                          "course_type", "requires_consecutive", "requires_lab", "priority"],
+        "field_names": {
+            "class_name": "班级名称",
+            "class_grade": "年级",
+            "student_count": "学生人数",
+            "department": "所属专业",
+            "course_name": "课程名称",
+            "course_code": "课程编码",
+            "course_type": "课程类型",
+            "weekly_hours": "每周课时",
+            "total_hours": "总课时",
+            "credits": "学分",
+            "requires_consecutive": "需连排",
+            "requires_lab": "需实验室",
+            "priority": "优先级",
         }
     }
 }
@@ -205,24 +226,31 @@ def _get_example_data(entity_type: str) -> Dict[str, Any]:
     """获取示例数据"""
     examples = {
         "classes": {
-            "name": "高一(1)班", "grade": "高一", "student_count": "45",
-            "department": "理科", "homeroom_teacher": "张老师", "remarks": "示范数据"
+            "name": "计科1班", "grade": "大一", "student_count": "50",
+            "department": "计算机科学", "homeroom_teacher": "张老师", "remarks": "示范数据"
         },
         "teachers": {
-            "name": "李明", "teacher_code": "T001", "department": "数学教研组",
-            "title": "高级教师", "email": "liming@school.edu.cn",
+            "name": "李明", "teacher_code": "T001", "department": "计算机学院",
+            "title": "教授", "email": "liming@university.edu.cn",
             "phone": "13800001001", "max_weekly_hours": "16", "remarks": "示范数据"
         },
         "courses": {
-            "name": "高等数学", "course_code": "MATH101", "course_type": "必修",
+            "name": "数据结构", "course_code": "CS201", "course_type": "必修",
             "weekly_hours": "4", "total_hours": "64", "credits": "4",
             "requires_consecutive": "否", "requires_lab": "否",
-            "priority": "5", "department": "数学教研组", "remarks": "示范数据"
+            "priority": "5", "department": "计算机科学", "remarks": "示范数据"
         },
         "classrooms": {
             "name": "教学楼A-101", "room_code": "A101", "building": "教学楼A",
-            "floor": "1", "capacity": "50", "room_type": "普通教室",
+            "floor": "1", "capacity": "60", "room_type": "普通教室",
             "has_multimedia": "是", "remarks": "示范数据"
+        },
+        "syllabus": {
+            "class_name": "计科1班", "class_grade": "大一", "student_count": "50",
+            "department": "计算机科学",
+            "course_name": "数据结构", "course_code": "CS201", "course_type": "必修",
+            "weekly_hours": "4", "total_hours": "64", "credits": "4",
+            "requires_consecutive": "否", "requires_lab": "否", "priority": "5",
         }
     }
     return examples.get(entity_type, {})

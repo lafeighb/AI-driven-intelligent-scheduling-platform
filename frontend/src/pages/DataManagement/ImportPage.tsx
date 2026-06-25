@@ -8,6 +8,7 @@ const { Title, Text } = Typography;
 const { Dragger } = Upload;
 
 const entityOptions = [
+  { label: '📋 课程大纲（班级+课程一体化）', value: 'syllabus' },
   { label: '班级数据', value: 'classes' },
   { label: '教师数据', value: 'teachers' },
   { label: '课程数据', value: 'courses' },

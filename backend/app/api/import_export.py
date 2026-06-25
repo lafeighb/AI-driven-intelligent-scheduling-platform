@@ -66,6 +66,10 @@ async def import_csv(entity_type: str, file: UploadFile = File(...), db: Session
             "summary": validation_result["summary"],
         }
 
+    # 课程大纲导入 — 一体化创建班级和课程，自动匹配 department
+    if entity_type == "syllabus":
+        return _import_syllabus(data_rows, db)
+
     # 批量存入数据库
     model_map = {
         "classes": ClassInfo,
@@ -255,3 +259,116 @@ def generate_report(version: str = Query(None), db: Session = Depends(get_db)):
     )
 
     return report
+
+
+def _import_syllabus(data_rows: list, db: Session) -> dict:
+    """导入课程大纲：一体化创建/更新班级和课程，自动按所属专业匹配
+
+    大纲CSV的每一行定义了「某班级上某课程，每周N课时」。
+    导入逻辑：
+    - 班级按名称去重：已存在则更新学生人数，不存在则新建
+    - 课程按编码去重：已存在则更新周课时/专业，不存在则新建
+    - 课程的 department 自动设为班级的 department，确保排课时匹配
+    """
+    classes_created = 0
+    classes_updated = 0
+    courses_created = 0
+    courses_updated = 0
+    errors = []
+
+    for i, row in enumerate(data_rows, start=2):
+        try:
+            class_name = str(row.get("class_name", "")).strip()
+            class_grade = str(row.get("class_grade", "大一")).strip()
+            department = str(row.get("department", "")).strip()
+            student_count = row.get("student_count")
+            if student_count is not None:
+                student_count = int(student_count) if str(student_count).isdigit() else None
+
+            course_name = str(row.get("course_name", "")).strip()
+            course_code = str(row.get("course_code", "")).strip()
+            weekly_hours = int(row.get("weekly_hours", 2))
+            total_hours = row.get("total_hours")
+            if total_hours is not None:
+                total_hours = int(total_hours) if str(total_hours).isdigit() else None
+            credits = row.get("credits")
+            if credits is not None:
+                credits = int(credits) if str(credits).isdigit() else None
+            course_type = str(row.get("course_type", "必修")).strip()
+            requires_consecutive = row.get("requires_consecutive", False)
+            if isinstance(requires_consecutive, str):
+                requires_consecutive = requires_consecutive.lower() in ("yes", "true", "是", "1")
+            requires_lab = row.get("requires_lab", False)
+            if isinstance(requires_lab, str):
+                requires_lab = requires_lab.lower() in ("yes", "true", "是", "1")
+            priority = row.get("priority", 0)
+            if priority is not None:
+                priority = int(priority) if str(priority).isdigit() else 0
+
+            if not class_name or not course_name or not course_code:
+                errors.append(f"第{i}行: 班级名称/课程名称/课程编码不能为空")
+                continue
+
+            # 查找或创建班级
+            existing_class = db.query(ClassInfo).filter(ClassInfo.name == class_name).first()
+            if existing_class:
+                existing_class.grade = class_grade
+                if department:
+                    existing_class.department = department
+                if student_count is not None:
+                    existing_class.student_count = student_count
+                classes_updated += 1
+                class_obj = existing_class
+            else:
+                class_obj = ClassInfo(
+                    name=class_name, grade=class_grade,
+                    department=department or None,
+                    student_count=student_count or 0,
+                )
+                db.add(class_obj)
+                db.flush()
+                classes_created += 1
+
+            # 查找或创建课程（department 与班级保持一致）
+            existing_course = db.query(Course).filter(Course.course_code == course_code).first()
+            if existing_course:
+                existing_course.name = course_name
+                existing_course.weekly_hours = weekly_hours
+                existing_course.course_type = course_type
+                if department:
+                    existing_course.department = department
+                if total_hours is not None:
+                    existing_course.total_hours = total_hours
+                if credits is not None:
+                    existing_course.credits = credits
+                existing_course.requires_consecutive = bool(requires_consecutive)
+                existing_course.requires_lab = bool(requires_lab)
+                existing_course.priority = priority
+                courses_updated += 1
+            else:
+                course_obj = Course(
+                    name=course_name, course_code=course_code,
+                    course_type=course_type, weekly_hours=weekly_hours,
+                    total_hours=total_hours, credits=credits or 2,
+                    requires_consecutive=bool(requires_consecutive),
+                    requires_lab=bool(requires_lab),
+                    priority=priority, department=department or None,
+                )
+                db.add(course_obj)
+                db.flush()
+                courses_created += 1
+
+        except Exception as e:
+            errors.append(f"第{i}行处理失败: {str(e)}")
+
+    db.commit()
+
+    return {
+        "success": len(errors) == 0,
+        "imported": len(data_rows),
+        "errors": errors,
+        "summary": (
+            f"大纲导入完成：新建班级 {classes_created} 个、更新班级 {classes_updated} 个，"
+            f"新建课程 {courses_created} 门、更新课程 {courses_updated} 门"
+        ),
+    }
