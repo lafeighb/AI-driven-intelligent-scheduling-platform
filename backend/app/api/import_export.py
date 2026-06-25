@@ -5,6 +5,7 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from typing import List
 import io
+from urllib.parse import quote
 
 from app.database import get_db
 from app.models.class_info import ClassInfo
@@ -136,11 +137,16 @@ def export_excel(version: str = Query(None), db: Session = Depends(get_db)):
     }
     excel_bytes = ExportService.export_to_excel(entry_dicts, metadata)
 
-    filename = f"排课方案_{version or 'latest'}.xlsx"
+    filename_base = f"排课方案_{version or 'latest'}"
+    filename_ascii = f"scheduling_{version or 'latest'}.xlsx"
+    filename_utf8 = f"{filename_base}.xlsx"
+    encoded_filename = quote(filename_utf8)
     return StreamingResponse(
         io.BytesIO(excel_bytes),
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        headers={"Content-Disposition": f"attachment; filename={filename}"}
+        headers={
+            "Content-Disposition": f"attachment; filename=\"{filename_ascii}\"; filename*=UTF-8''{encoded_filename}"
+        }
     )
 
 
@@ -178,11 +184,17 @@ def export_pdf(version: str = Query(None), view_type: str = Query("class"),
     metadata = {"version": version or entries[0].schedule_version, "total_entries": len(entries)}
     pdf_bytes = ExportService.export_to_pdf(entry_dicts, metadata, view_type)
 
-    filename = f"排课方案_{view_type}视图.pdf"
+    filename_view = {"class": "班级", "teacher": "教师", "classroom": "教室"}.get(view_type, view_type)
+    filename_base = f"排课方案_{filename_view}视图"
+    filename_ascii = f"scheduling_{view_type}.pdf"
+    filename_utf8 = f"{filename_base}.pdf"
+    encoded_filename = quote(filename_utf8)
     return StreamingResponse(
         io.BytesIO(pdf_bytes),
         media_type="application/pdf",
-        headers={"Content-Disposition": f"attachment; filename={filename}"}
+        headers={
+            "Content-Disposition": f"attachment; filename=\"{filename_ascii}\"; filename*=UTF-8''{encoded_filename}"
+        }
     )
 
 

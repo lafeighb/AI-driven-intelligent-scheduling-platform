@@ -85,6 +85,14 @@ export interface Classroom {
   updated_at: string;
 }
 
+// ===== 排课版本类型 =====
+export interface VersionInfo {
+  version: string;
+  entry_count: number;
+  avg_quality?: number;
+  timestamp?: number;  // Unix 秒级时间戳
+}
+
 // ===== 排课相关类型 =====
 export interface ScheduleEntry {
   id: number;

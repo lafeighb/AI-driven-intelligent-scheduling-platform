@@ -2,6 +2,7 @@
 import json
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
+from sqlalchemy import func, desc
 from typing import List, Optional
 
 from app.database import get_db
@@ -195,11 +196,38 @@ def list_schedules(
     return [_enrich_entry(e, db) for e in entries]
 
 
-@router.get("/versions", summary="获取所有排课版本")
+@router.get("/versions", summary="获取所有排课版本（含统计信息）")
 def list_versions(db: Session = Depends(get_db)):
-    """获取历史排课版本列表"""
-    versions = db.query(ScheduleEntry.schedule_version).distinct().all()
-    return [{"version": v[0]} for v in versions if v[0]]
+    """获取历史排课版本列表，含条目数、平均质量评分，按时间倒序"""
+    results = (
+        db.query(
+            ScheduleEntry.schedule_version,
+            func.count(ScheduleEntry.id).label("entry_count"),
+            func.avg(ScheduleEntry.quality_score).label("avg_quality"),
+        )
+        .group_by(ScheduleEntry.schedule_version)
+        .order_by(desc(ScheduleEntry.schedule_version))
+        .all()
+    )
+    versions = []
+    for v in results:
+        if not v[0]:
+            continue
+        # 从版本字符串解析时间戳: schedule_{unix_ts}_{uuid8}
+        ts = None
+        parts = v[0].split("_")
+        if len(parts) >= 2:
+            try:
+                ts = int(parts[1])
+            except (ValueError, IndexError):
+                pass
+        versions.append({
+            "version": v[0],
+            "entry_count": v[1],
+            "avg_quality": round(float(v[2]), 1) if v[2] is not None else None,
+            "timestamp": ts,
+        })
+    return versions
 
 
 @router.put("/{entry_id}", response_model=ScheduleEntryResponse, summary="调整排课条目")

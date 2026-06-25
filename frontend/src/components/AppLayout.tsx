@@ -12,7 +12,6 @@ import {
   SettingOutlined,
   ImportOutlined,
   ExportOutlined,
-  BarChartOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
   ThunderboltOutlined,
@@ -56,11 +55,6 @@ const menuItems = [
     key: '/timetable',
     icon: <ScheduleOutlined />,
     label: '课表视图',
-  },
-  {
-    key: '/reports',
-    icon: <BarChartOutlined />,
-    label: '分析报告',
   },
   {
     key: '/export',

@@ -16,7 +16,6 @@ import ConstraintsPage from './pages/Scheduling/ConstraintsPage';
 import EnginePage from './pages/Scheduling/EnginePage';
 import ConflictsPage from './pages/Scheduling/ConflictsPage';
 import TimetableView from './pages/TimetableView';
-import ReportsPage from './pages/ReportsPage';
 import ExportPage from './pages/ExportPage';
 import Login from './pages/Login';
 import Register from './pages/Register';
@@ -69,7 +68,6 @@ export default function App() {
                 <Route path="/schedule/engine" element={<EnginePage />} />
                 <Route path="/schedule/conflicts" element={<ConflictsPage />} />
                 <Route path="/timetable" element={<TimetableView />} />
-                <Route path="/reports" element={<ReportsPage />} />
                 <Route path="/export" element={<ExportPage />} />
               </Route>
             </Routes>

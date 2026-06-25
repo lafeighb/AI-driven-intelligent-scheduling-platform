@@ -24,16 +24,33 @@ apiClient.interceptors.request.use(
 // 响应拦截器
 apiClient.interceptors.response.use(
   (response) => response.data,
-  (error) => {
+  async (error) => {
     // 401 未认证，清除 token 并跳转登录页
     if (error.response?.status === 401) {
       localStorage.removeItem('access_token');
-      // 避免在登录页本身产生重定向循环
       if (window.location.pathname !== '/login' && window.location.pathname !== '/register') {
         window.location.href = '/login';
       }
     }
-    const message = error.response?.data?.detail || error.message || '请求失败';
+
+    let message = error.message || '请求失败';
+    const respData = error.response?.data;
+
+    if (respData) {
+      if (respData instanceof Blob) {
+        // Blob 类型响应（导出 API 等），读取文本提取后端错误详情
+        try {
+          const text = await respData.text();
+          const parsed = JSON.parse(text);
+          message = parsed.detail || message;
+        } catch {
+          // 无法解析则使用默认错误消息
+        }
+      } else if (typeof respData === 'object' && respData.detail) {
+        message = respData.detail;
+      }
+    }
+
     console.error('API Error:', message);
     return Promise.reject(new Error(message));
   }

@@ -1,5 +1,6 @@
 // 课表视图页面 - 甘特图风格，支持按班级/教师/教室三维度查看
 import { useState, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   Card, Select, Space, Typography, Tabs, Button, Spin, Empty, Tooltip
 } from 'antd';
@@ -20,6 +21,9 @@ const COLORS = [
 ];
 
 export default function TimetableView() {
+  const [searchParams] = useSearchParams();
+  const versionParam = searchParams.get('version') || undefined;
+
   const [entries, setEntries] = useState<ScheduleEntry[]>([]);
   const [viewType, setViewType] = useState<'class' | 'teacher' | 'classroom'>('class');
   const [groups, setGroups] = useState<string[]>([]);
@@ -30,7 +34,7 @@ export default function TimetableView() {
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const res: any = await scheduleApi.list({ limit: 2000 });
+      const res: any = await scheduleApi.list({ limit: 2000, version: versionParam });
       const data = (res || []) as ScheduleEntry[];
       setEntries(data);
 
@@ -48,7 +52,7 @@ export default function TimetableView() {
     } finally {
       setLoading(false);
     }
-  }, [viewType]);
+  }, [viewType, versionParam]);
 
   useEffect(() => { loadData(); }, [loadData]);
 

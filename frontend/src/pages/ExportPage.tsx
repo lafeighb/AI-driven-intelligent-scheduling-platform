@@ -29,11 +29,8 @@ export default function ExportPage() {
       } else {
         res = await ioApi.exportPdf(selectedVersion, viewType);
       }
-      const blob = new Blob([res as any], {
-        type: format === 'excel'
-          ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-          : 'application/pdf'
-      });
+      // res 已经是 Blob（axios responseType: 'blob' + 拦截器返回 response.data）
+      const blob = res as Blob;
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
