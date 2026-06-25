@@ -93,18 +93,20 @@ class ValidationService:
             self.errors.append({"field": "course_code", "message": "课程编码不能为空"})
 
         # 课时合理性
-        if data.get("weekly_hours"):
-            hours = int(data["weekly_hours"])
-            if hours > 6:
+        if data.get("semester_sessions"):
+            sessions = int(data["semester_sessions"])
+            if sessions > 32:
                 self.warnings.append({
-                    "field": "weekly_hours",
-                    "message": f"每周课时({hours})较多，建议检查课程设置是否合理",
+                    "field": "semester_sessions",
+                    "message": f"学期教学次数({sessions})较多，建议检查课程设置是否合理",
                     "severity": "medium"
                 })
-            elif hours >= 4 and not data.get("requires_consecutive"):
+        if data.get("weekly_sessions"):
+            weekly = int(data["weekly_sessions"])
+            if weekly >= 3 and not data.get("requires_consecutive"):
                 self.warnings.append({
-                    "field": "weekly_hours",
-                    "message": f"每周{hours}课时，建议考虑设置连排以优化教学效果",
+                    "field": "weekly_sessions",
+                    "message": f"每周上课{weekly}次，建议考虑设置连排以优化教学效果",
                     "severity": "low"
                 })
 

@@ -33,14 +33,17 @@ CSV_TEMPLATES = {
         }
     },
     "courses": {
-        "required_fields": ["name", "course_code", "weekly_hours"],
-        "optional_fields": ["course_type", "total_hours", "credits", "requires_consecutive",
+        "required_fields": ["name", "course_code", "semester_sessions"],
+        "optional_fields": ["course_type", "weekly_sessions", "hours_per_session", "total_hours",
+                          "credits", "requires_consecutive",
                           "requires_lab", "priority", "department", "remarks"],
         "field_names": {
             "name": "课程名称",
             "course_code": "课程编码",
             "course_type": "课程类型",
-            "weekly_hours": "每周课时",
+            "semester_sessions": "学期教学次数",
+            "weekly_sessions": "每周上课次数",
+            "hours_per_session": "每次课时",
             "total_hours": "总课时",
             "credits": "学分",
             "requires_consecutive": "需连排",
@@ -75,8 +78,8 @@ CSV_TEMPLATES = {
             "department": "所属专业",
         },
         # 课程列模板 — 每个课程占用5列：名称、编码、类型、每周课时、总课时
-        "course_column_count": 5,
-        "course_columns": ["名称", "编码", "类型", "每周课时", "总课时"],
+        "course_column_count": 7,
+        "course_columns": ["名称", "编码", "类型", "学期教学次数", "每周上课次数", "每次课时", "总课时"],
     }
 }
 
@@ -168,8 +171,9 @@ def _convert_field_value(field: str, value: Any) -> Any:
         return None
 
     # 数值类型字段
-    if field in ("student_count", "max_weekly_hours", "weekly_hours",
-                 "total_hours", "credits", "priority", "capacity", "floor"):
+    if field in ("student_count", "max_weekly_hours", "semester_sessions",
+                 "weekly_sessions", "hours_per_session", "total_hours",
+                 "credits", "priority", "capacity", "floor"):
         try:
             return int(value)
         except (ValueError, TypeError):
@@ -233,7 +237,8 @@ def _get_example_data(entity_type: str) -> Dict[str, Any]:
         },
         "courses": {
             "name": "数据结构", "course_code": "CS201", "course_type": "必修",
-            "weekly_hours": "4", "total_hours": "64", "credits": "4",
+            "semester_sessions": "16", "weekly_sessions": "1", "hours_per_session": "2",
+            "total_hours": "32", "credits": "4",
             "requires_consecutive": "否", "requires_lab": "否",
             "priority": "5", "department": "计算机科学", "remarks": "示范数据"
         },
@@ -275,9 +280,9 @@ def generate_syllabus_template(course_count: int = 5) -> str:
     example_row = [example.get(f, "") for f in class_fields]
     # 示例课程
     demo_courses = [
-        ["数据结构", "CS201", "必修", "4", "64"],
-        ["操作系统", "CS301", "必修", "4", "64"],
-        ["计算机网络", "CS302", "必修", "3", "48"],
+        ["数据结构", "CS201", "必修", "16", "1", "2", "32"],
+        ["操作系统", "CS301", "必修", "16", "1", "2", "32"],
+        ["计算机网络", "CS302", "必修", "16", "1", "2", "32"],
     ]
     for c in demo_courses:
         example_row.extend(c)
@@ -317,14 +322,16 @@ def parse_syllabus_csv(content: str) -> Tuple[List[Dict[str, Any]], List[str]]:
 
         # 识别课程列组：匹配「课程N列名」模式
         course_groups: Dict[int, Dict[str, int]] = {}  # {课程序号: {列名: 列索引}}
-        course_col_names = ["名称", "编码", "类型", "每周课时", "总课时"]
+        course_col_names = ["名称", "编码", "类型", "学期教学次数", "每周上课次数", "每次课时", "总课时"]
 
         # 列名到英文字段的映射（用于解析后的数据）
         course_field_map = {
             "名称": "course_name",
             "编码": "course_code",
             "类型": "course_type",
-            "每周课时": "weekly_hours",
+            "学期教学次数": "semester_sessions",
+            "每周上课次数": "weekly_sessions",
+            "每次课时": "hours_per_session",
             "总课时": "total_hours",
         }
 
@@ -376,8 +383,14 @@ def parse_syllabus_csv(content: str) -> Tuple[List[Dict[str, Any]], List[str]]:
                     if not course_name or not course_code:
                         continue  # 跳过空课程列
 
-                    weekly_hours = course_info.get("每周课时", "")
-                    weekly_hours = int(weekly_hours) if weekly_hours and weekly_hours.isdigit() else 2
+                    semester_sessions = course_info.get("学期教学次数", "")
+                    semester_sessions = int(semester_sessions) if semester_sessions and semester_sessions.isdigit() else 16
+
+                    weekly_sessions = course_info.get("每周上课次数", "")
+                    weekly_sessions = int(weekly_sessions) if weekly_sessions and weekly_sessions.isdigit() else 1
+
+                    hours_per_session = course_info.get("每次课时", "")
+                    hours_per_session = int(hours_per_session) if hours_per_session and hours_per_session.isdigit() else 2
 
                     total_hours = course_info.get("总课时", "")
                     total_hours = int(total_hours) if total_hours and total_hours.isdigit() else None
@@ -390,7 +403,9 @@ def parse_syllabus_csv(content: str) -> Tuple[List[Dict[str, Any]], List[str]]:
                         "course_name": course_name,
                         "course_code": course_code,
                         "course_type": course_type,
-                        "weekly_hours": weekly_hours,
+                        "semester_sessions": semester_sessions,
+                        "weekly_sessions": weekly_sessions,
+                        "hours_per_session": hours_per_session,
                         "total_hours": total_hours,
                     })
                     all_rows.append(combined)

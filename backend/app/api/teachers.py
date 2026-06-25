@@ -6,6 +6,8 @@ from typing import List
 from app.database import get_db
 from app.models.teacher import Teacher
 from app.models.schedule import ScheduleEntry
+from app.models.course import Course
+from app.models.class_info import ClassInfo
 from app.schemas.teacher import TeacherCreate, TeacherUpdate, TeacherResponse
 
 router = APIRouter(prefix="/api/teachers", tags=["教师管理"])
@@ -26,6 +28,69 @@ def list_teachers(
     if search:
         query = query.filter(Teacher.name.contains(search))
     return query.offset(skip).limit(limit).all()
+
+
+# ⚠️ 重要：/{teacher_id}/courses 必须放在 /{teacher_id} 前面，否则会被后者拦截
+@router.get("/{teacher_id}/courses", summary="查看教师课程分配")
+def get_teacher_courses(teacher_id: int, version: str = Query(None), db: Session = Depends(get_db)):
+    """查看某教师分配的所有课程及各课程学时（需先执行排课）"""
+    teacher = db.query(Teacher).filter(Teacher.id == teacher_id).first()
+    if not teacher:
+        raise HTTPException(status_code=404, detail="教师不存在")
+
+    query = db.query(ScheduleEntry).filter(ScheduleEntry.teacher_id == teacher_id)
+    if version:
+        query = query.filter(ScheduleEntry.schedule_version == version)
+    entries = query.all()
+
+    if not entries:
+        return {
+            "teacher_id": teacher_id, "teacher_name": teacher.name,
+            "department": teacher.department, "title": teacher.title,
+            "courses": [], "total_weekly_hours": 0,
+        }
+
+    # 按课程+班级聚合
+    course_map = {}
+    for entry in entries:
+        key = (entry.course_id, entry.class_id)
+        if key not in course_map:
+            course = db.query(Course).filter(Course.id == entry.course_id).first()
+            cls = db.query(ClassInfo).filter(ClassInfo.id == entry.class_id).first()
+            course_map[key] = {
+                "course_id": entry.course_id,
+                "course_name": course.name if course else "",
+                "course_code": course.course_code if course else "",
+                "semester_sessions": course.semester_sessions if course else 0,
+                "weekly_sessions": course.weekly_sessions if course else 0,
+                "hours_per_session": course.hours_per_session if course else 0,
+                "total_hours": course.total_hours if course else None,
+                "class_name": cls.name if cls else "",
+                "time_slots": 0,
+            }
+        course_map[key]["time_slots"] += 1
+
+    courses = []
+    total = 0
+    for key, info in course_map.items():
+        courses.append({
+            "course_id": info["course_id"],
+            "course_name": info["course_name"],
+            "course_code": info["course_code"],
+            "semester_sessions": info["semester_sessions"],
+            "weekly_sessions": info["weekly_sessions"],
+            "hours_per_session": info["hours_per_session"],
+            "total_hours": info["total_hours"],
+            "class_name": info["class_name"],
+            "time_slots": info["time_slots"],
+        })
+        total += info["weekly_sessions"]
+
+    return {
+        "teacher_id": teacher_id, "teacher_name": teacher.name,
+        "department": teacher.department, "title": teacher.title,
+        "courses": courses, "total_weekly_hours": total,
+    }
 
 
 @router.get("/{teacher_id}", response_model=TeacherResponse, summary="获取教师详情")

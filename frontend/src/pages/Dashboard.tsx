@@ -41,17 +41,17 @@ export default function Dashboard() {
     async function loadData() {
       try {
         const [clsRes, teaRes, couRes, roomRes, verRes] = await Promise.all([
-          classApi.list({ limit: 1 }),
-          teacherApi.list({ limit: 1 }),
-          courseApi.list({ limit: 1 }),
-          classroomApi.list({ limit: 1 }),
+          classApi.list({ limit: 500 }),
+          teacherApi.list({ limit: 500 }),
+          courseApi.list({ limit: 500 }),
+          classroomApi.list({ limit: 500 }),
           scheduleApi.getVersions(),
         ]);
         setStats({
-          classes: (clsRes as any).length || 0,
-          teachers: (teaRes as any).length || 0,
-          courses: (couRes as any).length || 0,
-          classrooms: (roomRes as any).length || 0,
+          classes: Array.isArray(clsRes) ? clsRes.length : 0,
+          teachers: Array.isArray(teaRes) ? teaRes.length : 0,
+          courses: Array.isArray(couRes) ? couRes.length : 0,
+          classrooms: Array.isArray(roomRes) ? roomRes.length : 0,
         });
         const verList = (verRes as VersionInfo[]) || [];
         setVersions(verList);
@@ -60,7 +60,8 @@ export default function Dashboard() {
           setSelectedVersion(verList[0].version);
         }
       } catch {
-        setStats({ classes: 12, teachers: 45, courses: 68, classrooms: 30 });
+        // API 不可达时显示 0 而非假数据
+        setStats({ classes: 0, teachers: 0, courses: 0, classrooms: 0 });
       } finally {
         setLoading(false);
       }

@@ -290,7 +290,9 @@ def _import_syllabus(data_rows: list, db: Session) -> dict:
 
             course_name = str(row.get("course_name", "")).strip()
             course_code = str(row.get("course_code", "")).strip()
-            weekly_hours = int(row.get("weekly_hours", 2))
+            semester_sessions = int(row.get("semester_sessions", 16))
+            weekly_sessions = int(row.get("weekly_sessions", 1))
+            hours_per_session = int(row.get("hours_per_session", 2))
             total_hours = row.get("total_hours")
             if total_hours is not None:
                 total_hours = int(total_hours) if str(total_hours).isdigit() else None
@@ -336,7 +338,9 @@ def _import_syllabus(data_rows: list, db: Session) -> dict:
             existing_course = db.query(Course).filter(Course.course_code == course_code).first()
             if existing_course:
                 existing_course.name = course_name
-                existing_course.weekly_hours = weekly_hours
+                existing_course.semester_sessions = semester_sessions
+                existing_course.weekly_sessions = weekly_sessions
+                existing_course.hours_per_session = hours_per_session
                 existing_course.course_type = course_type
                 if department:
                     existing_course.department = department
@@ -351,7 +355,8 @@ def _import_syllabus(data_rows: list, db: Session) -> dict:
             else:
                 course_obj = Course(
                     name=course_name, course_code=course_code,
-                    course_type=course_type, weekly_hours=weekly_hours,
+                    course_type=course_type, semester_sessions=semester_sessions,
+                    weekly_sessions=weekly_sessions, hours_per_session=hours_per_session,
                     total_hours=total_hours, credits=credits or 2,
                     requires_consecutive=bool(requires_consecutive),
                     requires_lab=bool(requires_lab),

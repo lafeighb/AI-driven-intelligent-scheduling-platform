@@ -58,7 +58,9 @@ export interface Course {
   name: string;
   course_code: string;
   course_type: string;
-  weekly_hours: number;
+  semester_sessions: number;
+  weekly_sessions: number;
+  hours_per_session: number;
   total_hours?: number;
   credits?: number;
   requires_consecutive: boolean;
@@ -83,6 +85,49 @@ export interface Classroom {
   remarks?: string;
   created_at: string;
   updated_at: string;
+}
+
+// ===== 班级/教师课程视图类型 =====
+export interface ClassCourseInfo {
+  course_id: number;
+  course_name: string;
+  course_code: string;
+  semester_sessions: number;
+  weekly_sessions: number;
+  hours_per_session: number;
+  total_hours?: number;
+  teacher_names: string[];
+  time_slots: number;
+}
+
+export interface ClassCoursesResponse {
+  class_id: number;
+  class_name: string;
+  grade: string;
+  department?: string;
+  courses: ClassCourseInfo[];
+  total_weekly_hours: number;
+}
+
+export interface TeacherCourseInfo {
+  course_id: number;
+  course_name: string;
+  course_code: string;
+  semester_sessions: number;
+  weekly_sessions: number;
+  hours_per_session: number;
+  total_hours?: number;
+  class_name: string;
+  time_slots: number;
+}
+
+export interface TeacherCoursesResponse {
+  teacher_id: number;
+  teacher_name: string;
+  department?: string;
+  title?: string;
+  courses: TeacherCourseInfo[];
+  total_weekly_hours: number;
 }
 
 // ===== 排课版本类型 =====

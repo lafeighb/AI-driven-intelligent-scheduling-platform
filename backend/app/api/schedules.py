@@ -1,5 +1,6 @@
 """排课管理与操作API"""
 import json
+from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import func, desc
@@ -54,10 +55,22 @@ def _enrich_entry(entry: ScheduleEntry, db: Session) -> dict:
 @router.post("/generate", response_model=ScheduleResult, summary="AI自动排课")
 def generate_schedule(request: ScheduleRequest, db: Session = Depends(get_db)):
     """执行AI驱动的自动排课"""
-    # 加载数据
-    courses = db.query(Course).all()
-    teachers = db.query(Teacher).all()
-    classes = db.query(ClassInfo).all()
+    # 加载数据（支持按 class_ids / course_ids / teacher_ids 筛选）
+    classes_query = db.query(ClassInfo)
+    if request.class_ids:
+        classes_query = classes_query.filter(ClassInfo.id.in_(request.class_ids))
+    classes = classes_query.all()
+
+    courses_query = db.query(Course)
+    if request.course_ids:
+        courses_query = courses_query.filter(Course.id.in_(request.course_ids))
+    courses = courses_query.all()
+
+    teachers_query = db.query(Teacher)
+    if request.teacher_ids:
+        teachers_query = teachers_query.filter(Teacher.id.in_(request.teacher_ids))
+    teachers = teachers_query.all()
+
     classrooms = db.query(Classroom).all()
     constraints = db.query(ConstraintRule).filter(ConstraintRule.is_active == True).all()
 
@@ -67,7 +80,8 @@ def generate_schedule(request: ScheduleRequest, db: Session = Depends(get_db)):
     # 转换为字典
     course_dicts = [
         {"id": c.id, "name": c.name, "course_code": c.course_code,
-         "course_type": c.course_type, "weekly_hours": c.weekly_hours,
+         "course_type": c.course_type, "weekly_sessions": c.weekly_sessions,
+         "semester_sessions": c.semester_sessions, "hours_per_session": c.hours_per_session,
          "requires_consecutive": c.requires_consecutive, "requires_lab": c.requires_lab,
          "priority": c.priority, "department": c.department}
         for c in courses
@@ -108,6 +122,24 @@ def generate_schedule(request: ScheduleRequest, db: Session = Depends(get_db)):
     }
     engine = SchedulingEngine(config)
     engine.load_data(course_dicts, teacher_dicts, class_dicts, classroom_dicts, constraint_dicts)
+
+    # 排课前校验：检测是否有课程没有教师教授
+    courses_without_teacher = engine.get_courses_without_teachers()
+    if courses_without_teacher:
+        course_names = [c["course_name"] for c in courses_without_teacher]
+        raise HTTPException(
+            status_code=400,
+            detail=f"以下课程没有教师教授，请先在教师管理中为这些课程分配教学教师：{'、'.join(course_names)}"
+        )
+
+    # 排课前校验：检测是否有课程没有匹配班级
+    courses_without_class = engine.get_courses_without_classes()
+    if courses_without_class:
+        course_names = [c["course_name"] for c in courses_without_class]
+        raise HTTPException(
+            status_code=400,
+            detail=f"以下课程没有匹配的班级，请检查课程和班级的专业设置：{'、'.join(course_names)}"
+        )
 
     # 执行排课
     result = engine.run()
@@ -156,6 +188,32 @@ def generate_schedule(request: ScheduleRequest, db: Session = Depends(get_db)):
         db.add(schedule_entry)
     db.commit()
 
+    # 将排课条目转为响应格式（补充名称等展示字段）
+    now = datetime.now(timezone.utc)
+    response_entries = []
+    for entry in result["entries"]:
+        response_entries.append({
+            "id": 0,  # 临时 ID，实际以 DB 为准
+            "schedule_version": version,
+            "course_id": entry["course_id"],
+            "teacher_id": entry["teacher_id"],
+            "class_id": entry["class_id"],
+            "classroom_id": entry["classroom_id"],
+            "week_number": entry["week_number"],
+            "day_of_week": entry["day_of_week"],
+            "period_start": entry["period_start"],
+            "period_end": entry["period_end"],
+            "status": "confirmed",
+            "is_manual": False,
+            "quality_score": None,
+            "created_at": now,
+            "updated_at": now,
+            "course_name": entry.get("course_name", ""),
+            "teacher_name": entry.get("teacher_name", ""),
+            "class_name": entry.get("class_name", ""),
+            "classroom_name": entry.get("classroom_name", ""),
+        })
+
     return ScheduleResult(
         success=True,
         version=version,
@@ -164,6 +222,7 @@ def generate_schedule(request: ScheduleRequest, db: Session = Depends(get_db)):
         soft_conflicts=result["soft_conflicts"],
         quality_score=result["quality_score"],
         explanation=explanation,
+        entries=response_entries,
     )
 
 

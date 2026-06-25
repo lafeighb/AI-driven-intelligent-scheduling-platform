@@ -69,6 +69,8 @@ export const classApi = {
   create: (data: any) => apiClient.post('/classes/', data),
   update: (id: number, data: any) => apiClient.put(`/classes/${id}`, data),
   delete: (id: number) => apiClient.delete(`/classes/${id}`),
+  getCourses: (id: number, version?: string) =>
+    apiClient.get(`/classes/${id}/courses`, { params: { version } }),
 };
 
 // ===== 教师 API =====
@@ -78,6 +80,8 @@ export const teacherApi = {
   create: (data: any) => apiClient.post('/teachers/', data),
   update: (id: number, data: any) => apiClient.put(`/teachers/${id}`, data),
   delete: (id: number) => apiClient.delete(`/teachers/${id}`),
+  getCourses: (id: number, version?: string) =>
+    apiClient.get(`/teachers/${id}/courses`, { params: { version } }),
 };
 
 // ===== 课程 API =====

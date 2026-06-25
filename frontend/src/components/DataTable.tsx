@@ -17,9 +17,10 @@ interface DataTableProps {
     delete: (id: number) => Promise<any>;
   };
   extraFilters?: React.ReactNode;
+  extraRowActions?: (record: any) => React.ReactNode;
 }
 
-export default function DataTable({ title, columns, formFields, api, extraFilters }: DataTableProps) {
+export default function DataTable({ title, columns, formFields, api, extraFilters, extraRowActions }: DataTableProps) {
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
@@ -92,9 +93,10 @@ export default function DataTable({ title, columns, formFields, api, extraFilter
   const actionColumn = {
     title: '操作',
     key: 'actions',
-    width: 150,
+    width: extraRowActions ? 240 : 150,
     render: (_: any, record: any) => (
       <Space size="small">
+        {extraRowActions?.(record)}
         <Button type="link" size="small" icon={<EditOutlined />} onClick={() => handleEdit(record)}>
           编辑
         </Button>
