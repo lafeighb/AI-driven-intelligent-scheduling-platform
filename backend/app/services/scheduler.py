@@ -108,6 +108,8 @@ class SchedulingEngine:
 
         # 课程-教师关联映射
         self.course_teacher_map: Dict[int, List[int]] = defaultdict(list)
+        # 课程-班级关联映射（按 department 匹配）
+        self.course_class_map: Dict[int, List[int]] = defaultdict(list)
 
         # 统计信息
         self.generation_history: List[Dict] = []
@@ -128,6 +130,8 @@ class SchedulingEngine:
 
         # 构建课程-教师关联：从教师数据中解析可教课程，或基于部门匹配
         self._build_course_teacher_map()
+        # 构建课程-班级关联：基于 department 字段匹配
+        self._build_course_class_map()
 
     def _build_course_teacher_map(self):
         """构建课程-教师关联映射"""
@@ -156,6 +160,33 @@ class SchedulingEngine:
         for course_id in self.courses:
             if not self.course_teacher_map[course_id]:
                 self.course_teacher_map[course_id] = all_teacher_ids.copy()
+
+    def _build_course_class_map(self):
+        """构建课程-班级关联映射：基于 department 字段匹配
+
+        规则：
+        - 课程有 department 且班级有相同 department → 匹配
+        - 课程没有 department（通用课）→ 匹配所有班级
+        - 班级没有 department → 匹配所有课程
+        - department 不匹配 → 不分配
+        """
+        self.course_class_map.clear()
+        all_class_ids = list(self.classes.keys())
+
+        for course_id, course in self.courses.items():
+            course_dept = (course.get("department") or "").strip()
+            if not course_dept:
+                # 通用课程，可分配给所有班级
+                self.course_class_map[course_id] = all_class_ids.copy()
+                continue
+
+            eligible = []
+            for class_id, cls in self.classes.items():
+                class_dept = (cls.get("department") or "").strip()
+                if not class_dept or class_dept == course_dept:
+                    eligible.append(class_id)
+
+            self.course_class_map[course_id] = eligible if eligible else all_class_ids.copy()
 
     def generate_initial_population(self) -> List[Schedule]:
         """生成初始种群"""
@@ -214,11 +245,16 @@ class SchedulingEngine:
                     is_consecutive = False
                     assigned_hours += 1
 
-                # 检查时间段是否已被占用（简单随机分配不做严格检查）
+                # 获取该课程可分配的目标班级（按 department 匹配）
+                eligible_classes = self.course_class_map.get(course_id, list(self.classes.keys()))
+                if not eligible_classes:
+                    eligible_classes = list(self.classes.keys())
+
+                # 检查时间段是否已被占用
                 assignment = CourseAssignment(
                     course_id=course_id,
                     teacher_id=random.choice(eligible_teachers),
-                    class_id=random.choice(list(self.classes.keys())),
+                    class_id=random.choice(eligible_classes),
                     classroom_id=random.choice(eligible_rooms),
                     time_slot=slot,
                     is_consecutive=is_consecutive,
@@ -292,6 +328,12 @@ class SchedulingEngine:
             max_hours = self.teachers.get(t_id, {}).get("max_weekly_hours", 20)
             if max_hours and hours > max_hours:
                 hard_violations += (hours - max_hours)
+
+        # 6. 课程-班级部门匹配检查（硬约束：课程必须分配到匹配专业的班级）
+        for a in schedule.assignments:
+            eligible = self.course_class_map.get(a.course_id, [])
+            if eligible and a.class_id not in eligible:
+                hard_violations += 5  # 部门不匹配视为较严重违规
 
         # === 软约束检查 ===
 
@@ -401,7 +443,7 @@ class SchedulingEngine:
         for i, assignment in enumerate(schedule.assignments):
             if random.random() < self.config["mutation_rate"]:
                 # 随机选择变异类型
-                mutation_type = random.choice(["teacher", "classroom", "timeslot", "swap"])
+                mutation_type = random.choice(["teacher", "classroom", "timeslot", "class", "swap"])
 
                 if mutation_type == "teacher":
                     eligible = self.course_teacher_map.get(assignment.course_id, [])
@@ -418,6 +460,14 @@ class SchedulingEngine:
                             eligible = lab_rooms
                     if eligible:
                         assignment.classroom_id = random.choice(eligible)
+
+                elif mutation_type == "class":
+                    eligible = self.course_class_map.get(assignment.course_id, list(self.classes.keys()))
+                    if eligible and len(eligible) > 1:
+                        current = assignment.class_id
+                        others = [c for c in eligible if c != current]
+                        if others:
+                            assignment.class_id = random.choice(others)
 
                 elif mutation_type == "timeslot":
                     days = list(range(1, self.config.get("weekdays", 5) + 1))
